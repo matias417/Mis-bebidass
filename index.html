@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#4aa3df">
+<title>Mis bebidas</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f4f8fb;color:#17324d}
+main{max-width:520px;margin:auto;padding:18px}.card{background:white;border-radius:22px;padding:20px;margin-bottom:14px;box-shadow:0 4px 18px #00000010}
+h1{margin:0 0 4px;font-size:28px}.date{color:#718396}.water{font-size:34px;font-weight:800;margin:14px 0 5px}.muted{color:#718396}
+.bar{height:15px;background:#e6eef5;border-radius:99px;overflow:hidden}.fill{height:100%;background:#4aa3df;width:0%;transition:.2s}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}button{border:0;border-radius:16px;background:#eef6fc;padding:15px 10px;font-size:16px;color:#17324d;font-weight:650}
+button:active{transform:scale(.98)}.total{font-size:21px;font-weight:750}.small{font-size:13px;color:#718396;margin-top:12px}
+.reset{background:#f1f1f1;margin-top:8px;width:100%}.history{width:100%;background:#e9f5ff;margin-bottom:8px}
+.historyRow{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #edf1f4}.historyRow:last-child{border-bottom:0}
+.badge{font-size:12px;padding:4px 8px;border-radius:99px;background:#eef6fc;white-space:nowrap}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<h1>🥤 Mis bebidas</h1><div class="date" id="date"></div>
+<div class="water" id="water">0 / 3.500 ml</div><div class="muted">💧 Agua</div>
+<div class="bar"><div class="fill" id="fill"></div></div>
+<div class="small" id="remaining">Faltan 3.500 ml de agua</div>
+</div>
+
+<div class="card"><div class="total" id="total">Total de líquidos: 0 ml</div>
+<div class="small">Pulsa una bebida para registrarla. Puedes cambiar la cantidad.</div></div>
+
+<div class="card"><div class="grid">
+<button onclick="add('Agua',250)">💧 Agua<br>+250 ml</button>
+<button onclick="add('Agua',500)">💧 Agua<br>+500 ml</button>
+<button onclick="add('Café',250)">☕ Café<br>+250 ml</button>
+<button onclick="add('Energética',355)">⚡ Monster<br>+355 ml</button>
+<button onclick="add('Jugo',250)">🧃 Jugo<br>+250 ml</button>
+<button onclick="add('Gaseosa',350)">🥤 Gaseosa<br>+350 ml</button>
+<button onclick="add('Leche',250)">🥛 Leche<br>+250 ml</button>
+<button onclick="add('Té',250)">🍵 Té<br>+250 ml</button>
+<button onclick="add('Batido',300)">🧋 Batido<br>+300 ml</button>
+<button onclick="custom()">➕ Otra cantidad</button>
+</div>
+<button class="history" onclick="toggleHistory()">📅 Ver historial</button>
+<button class="history" onclick="editGoal()">🎯 Cambiar meta de agua</button>
+<button class="reset" onclick="resetDay()">Reiniciar día</button>
+</div>
+
+<div class="card" id="historyCard" style="display:none">
+<h2 style="margin-top:0">📅 Historial</h2>
+<div class="small">Tus registros se guardan en este dispositivo.</div>
+<div id="history"></div>
+</div>
+<div class="small">La meta de agua se cuenta solo para el agua. Las demás bebidas suman al total de líquidos.</div>
+</main>
+
+<script>
+const PREFIX='bebidas_';
+const GOAL_KEY='meta_agua';
+let waterGoal=Number(localStorage.getItem(GOAL_KEY)||3500);
+const todayKey=()=>PREFIX+new Date().toISOString().slice(0,10);
+let data=JSON.parse(localStorage.getItem(todayKey())||'{}');
+
+function save(){localStorage.setItem(todayKey(),JSON.stringify(data));render()}
+function add(type,ml){data[type]=(data[type]||0)+ml;save()}
+function custom(){
+ let ml=prompt('¿Cuántos ml tomaste?');
+ if(ml&&Number(ml)>0){let type=prompt('¿Qué bebida fue? (Agua, café, jugo, etc.)')||'Otras';data[type]=(data[type]||0)+Number(ml);save()}
+}
+function editGoal(){
+ let v=prompt('¿Cuál quieres que sea tu meta diaria de agua? (ml)', waterGoal);
+ if(v!==null){v=Number(v); if(v>=100&&v<=20000){waterGoal=v;localStorage.setItem(GOAL_KEY,waterGoal);render();}else alert('Ingresa una meta entre 100 y 20.000 ml.');}
+}
+function resetDay(){if(confirm('¿Reiniciar el registro de hoy?')){data={};save()}}
+function toggleHistory(){
+ const c=document.getElementById('historyCard');
+ c.style.display=c.style.display==='none'?'block':'none';
+ if(c.style.display==='block') renderHistory();
+}
+function getHistory(){
+ const out=[];
+ for(let i=0;i<90;i++){
+  const d=new Date(); d.setDate(d.getDate()-i);
+  const key=PREFIX+d.toISOString().slice(0,10);
+  const x=JSON.parse(localStorage.getItem(key)||'null');
+  if(x && Object.keys(x).length){
+   const water=x.Agua||0,total=Object.values(x).reduce((a,b)=>a+Number(b),0);
+   out.push({date:d,water,total,goal:water>=waterGoal});
+  }
+ }
+ return out;
+}
+function renderHistory(){
+ const h=getHistory(), el=document.getElementById('history');
+ if(!h.length){el.innerHTML='<p class="muted">Todavía no hay días registrados.</p>';return}
+ el.innerHTML=h.map(x=>{
+  const date=x.date.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'});
+  return `<div class="historyRow"><div><b>${date}</b><br><span class="small">💧 ${x.water.toLocaleString('es-CL')} ml · Total ${x.total.toLocaleString('es-CL')} ml</span></div><span class="badge">${x.goal?'✅ Meta':'➖ Sin meta'}</span></div>`;
+ }).join('');
+}
+function render(){
+ let water=data.Agua||0,total=Object.values(data).reduce((a,b)=>a+Number(b),0),p=Math.min(water/waterGoal*100,100);
+ document.getElementById('date').textContent=new Date().toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
+ document.getElementById('water').textContent=water.toLocaleString('es-CL')+' / '+waterGoal.toLocaleString('es-CL')+' ml';
+ document.getElementById('fill').style.width=p+'%';
+ document.getElementById('remaining').textContent=water>=waterGoal?'🎉 ¡Meta de agua cumplida!':'Faltan '+Math.max(0,waterGoal-water).toLocaleString('es-CL')+' ml de agua';
+ document.getElementById('total').textContent='Total de líquidos: '+total.toLocaleString('es-CL')+' ml';
+ if(document.getElementById('historyCard').style.display==='block') renderHistory();
+}
+render();
+</script>
+</body></html>
